@@ -7,7 +7,7 @@ void make_water();
 
 struct reaction {
     int num_h;
-    int num_o;
+
     struct lock react_lock;
     struct condition o_cond;
     struct condition h_cond;
@@ -17,7 +17,7 @@ void
 reaction_init(struct reaction *reaction)
 {
     reaction->num_h = 0;
-    reaction->num_o = 0;
+
     lock_init(&reaction->react_lock);
     cond_init(&reaction->o_cond);
     cond_init(&reaction->h_cond);
@@ -27,19 +27,13 @@ void
 reaction_h(struct reaction *reaction)
 {
     lock_acquire(&reaction->react_lock);
-    reaction->num_h++;
-    //printf("%d\n",reaction->num_h);
 
-    if(reaction->num_h >= 2 && reaction->num_o >= 1){
+    reaction->num_h++;
+
+    if(reaction->num_h > 2)
         cond_signal(&reaction->o_cond, &reaction->react_lock);
-        cond_signal(&reaction->h_cond, &reaction->react_lock);
-        make_water();
-        reaction->num_h--;
-    }
-    else{
-        cond_wait(&reaction->h_cond, &reaction->react_lock);
-        reaction->num_h--;
-    }
+
+    cond_wait(&reaction->h_cond, &reaction->react_lock);
 
     lock_release(&reaction->react_lock);
 }
@@ -48,18 +42,15 @@ void
 reaction_o(struct reaction *reaction)
 {
     lock_acquire(&reaction->react_lock);
-    reaction->num_o++;
 
-    if(reaction->num_h >= 2 && reaction->num_o >= 1){
-        cond_signal(&reaction->h_cond, &reaction->react_lock);
-        cond_signal(&reaction->h_cond, &reaction->react_lock);
-        make_water();
-        reaction->num_o--;
-    }
-    else{
+    while(reaction->num_h < 2)
         cond_wait(&reaction->o_cond, &reaction->react_lock);
-        reaction->num_o--;
-    }
+
+    reaction->num_h -= 2;
+
+    make_water();
+    cond_signal(&reaction->h_cond, &reaction->react_lock);
+    cond_signal(&reaction->h_cond, &reaction->react_lock);
 
     lock_release(&reaction->react_lock);
 }
