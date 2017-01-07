@@ -1,0 +1,1 @@
+Lock typically includes "a queue" to keep track of multiple waiting threads.
